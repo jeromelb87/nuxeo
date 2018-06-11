@@ -376,6 +376,12 @@ public class XSDLoader {
         return ecmSchema;
     }
 
+    /**
+     * @param schema the nuxeo schema into we register the type.
+     * @param type the XSD type to load
+     * @param fieldName the field name owning this type, this is use when type is anonymous
+     * @return the loaded type
+     */
     protected Type loadType(Schema schema, XSType type, String fieldName) throws TypeBindingException {
         String name;
         if (type.getName() == null || type.isLocal()) {
@@ -737,8 +743,9 @@ public class XSDLoader {
                     processModelGroup(schema, superType, name, ct, term.asModelGroup(), abstractType);
                 }
             } else {
+                XSType elementType = element.getType();
                 if (maxOccur < 0 || maxOccur > 1) {
-                    Type fieldType = loadType(schema, element.getType(), element.getName());
+                    Type fieldType = loadType(schema, elementType, element.getName());
                     if (fieldType != null) {
                         ListType listType = createListType(schema, element.getName() + "#anonymousListType", fieldType,
                                 0, maxOccur);
@@ -747,7 +754,12 @@ public class XSDLoader {
                         ct.addField(fieldName, listType, null, 0, null);
                     }
                 } else {
-                    loadComplexTypeElement(schema, ct, element);
+                    // type could be anonymous
+                    // concat complex name to enforce inner element type unity across complex type
+                    Type fieldType = loadType(schema, elementType, name + '#' + element.getName());
+                    if (fieldType != null) {
+                        createField(ct, element, fieldType);
+                    }
                 }
             }
         }

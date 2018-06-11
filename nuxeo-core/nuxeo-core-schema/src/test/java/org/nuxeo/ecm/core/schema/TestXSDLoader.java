@@ -47,6 +47,7 @@ import org.nuxeo.ecm.core.schema.types.Type;
 import org.nuxeo.ecm.core.schema.types.constraints.Constraint;
 import org.nuxeo.ecm.core.schema.types.constraints.ConstraintUtils;
 import org.nuxeo.ecm.core.schema.types.constraints.EnumConstraint;
+import org.nuxeo.ecm.core.schema.types.primitives.LongType;
 import org.nuxeo.ecm.core.schema.types.primitives.StringType;
 import org.nuxeo.runtime.test.ResourceHelper;
 import org.nuxeo.runtime.test.runner.Deploy;
@@ -504,6 +505,42 @@ public class TestXSDLoader {
         Field address = schema.getField("address");
         assertEquals("prefix:address", address.getName().getPrefixedName());
         assertEquals("extension", address.getDeclaringType().getName());
+    }
+
+    /**
+     * NXP-24660
+     */
+    @Test
+    public void testComplexWithSameInnerField() throws Exception {
+
+        URL url = ResourceHelper.getResource("schema/testComplexWithSameInnerField.xsd");
+        assertNotNull(url);
+        Schema schema = reader.loadSchema("extension", "prefix", url, "employee");
+
+        assertNotNull(schema);
+
+        // check complex fields
+        assertTrue(schema.hasField("complexWithString"));
+        assertTrue(schema.hasField("complexWithInteger"));
+
+        // check complex types
+        checkComplexTypes(schema, "t_complexWithString", StringType.class);
+        checkComplexTypes(schema, "t_complexWithInteger", LongType.class);
+    }
+
+    private void checkComplexTypes(Schema schema, String typeName, Class<? extends Type> expectedInnerType) {
+        Type type = schema.getType(typeName);
+        assertNotNull(type);
+        assertTrue(type.isComplexType());
+        ComplexType complexType = (ComplexType) type;
+        assertEquals(1, complexType.getFieldsCount());
+
+        // check inner field/type
+        Field valueField = complexType.getFields().iterator().next();
+        assertNotNull(valueField);
+        Type valueType = valueField.getType();
+        assertTrue(typeName + " inner value is not a " + expectedInnerType,
+                expectedInnerType.isInstance(valueType.getSuperType()));
     }
 
 }
